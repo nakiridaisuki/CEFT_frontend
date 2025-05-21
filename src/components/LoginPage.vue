@@ -1,28 +1,51 @@
 <template>
   <div class="login-container">
-    <h2>登入</h2>
-    <form @submit.prevent="handleLogin">
-      <div class="form-group">
-        <label for="username">使用者名稱:</label>
-        <input type="text" id="username" v-model="username" required :disabled="loading" />
+    <div class="login-box">
+      <h1 class="login-title">登入</h1>
+
+      <form @submit.prevent="handleLogin" class="login-form">
+        <div class="form-group">
+          <label for="username" class="sr-only">帳號名稱</label>
+          <input
+            type="text"
+            id="username"
+            v-model="username"
+            placeholder="帳號名稱"
+            class="form-input"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="sr-only">密碼</label>
+          <input
+            type="password"
+            id="password"
+            v-model="password"
+            placeholder="密碼"
+            class="form-input"
+            required
+          />
+        </div>
+
+        <button type="submit" class="login-button" :disabled="loading">
+          {{ loading ? '登入中...' : '登入' }}
+        </button>
+      </form>
+
+      <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
       </div>
-      <div class="form-group">
-        <label for="password">密碼:</label>
-        <input type="password" id="password" v-model="password" required :disabled="loading" />
+
+      <div class="register-link-container">
+        第一次使用？<router-link to="/register" class="register-link">註冊</router-link>
       </div>
-      <button type="submit" :disabled="loading">
-        {{ loading ? '登入中...' : '登入' }}
-      </button>
-      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
-    </form>
-    <button @click="goToRegister" class="register-button">前往註冊</button>
+    </div>
   </div>
 </template>
 
 <script>
-import axios from 'axios'; // 1. 匯入 axios
-import { SIGNIN_URL } from '../config/apiConfig';
+import { signin } from '@/services/diskService';
 
 export default {
   name: 'LoginPage',
@@ -30,35 +53,19 @@ export default {
     return {
       username: '',
       password: '',
-      loading: false, // 2. 新增 loading 狀態，用於處理請求過程中的 UI 反應
-      errorMessage: '', // 3. 新增 errorMessage，用於顯示 API 錯誤訊息
-      successMessage: '', // 用於顯示成功訊息
+      loading: false,
+      errorMessage: '',
     };
   },
   methods: {
-    async handleLogin() { // 4. 將方法改為 async 以便使用 await
-      this.loading = true; // 開始請求，設定 loading 為 true
-      this.errorMessage = ''; // 清除先前的錯誤訊息
-      this.successMessage = ''; // 清除先前的成功訊息
+    async handleLogin() { 
+      this.loading = true;
+      this.errorMessage = '';
 
       try {
-        // 5. 發送 POST 請求到你的 API 端點
-        const formData = new FormData();
-        formData.append('username', this.username);
-        formData.append('password', this.password);
-        const response = await axios.post(SIGNIN_URL, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        // 6. 處理成功的 API 回應
+        const token = await signin(this.username, this.password);
         this.loading = false;
-        this.successMessage = '登入成功！';
-        console.log('API 回應:', response.data);
-
-        // 假設 API 回應中包含 token
-        const token = response.data.data.accessToken;
+        
         if (token) {
           localStorage.setItem('accessToken', token);
           localStorage.setItem('username', this.username);
@@ -67,102 +74,144 @@ export default {
         } else {
           this.errorMessage = '登入成功，但未收到 token。';
         }
-
-        // 清空表單 (可選)
-        // this.username = '';
-        // this.password = '';
-
       } catch (error) {
-        // 7. 處理 API 錯誤
+        this.errorMessage = error.message;
+      } finally {
+        this.username = '';
+        this.password = '';
         this.loading = false;
-        if (error.response) {
-          // API 回應了錯誤狀態碼 (例如 400, 401, 500)
-          this.errorMessage = '登入失敗，請檢查你的帳號或密碼。';
-          console.error('API 錯誤回應:', error.response.data);
-        } else if (error.request) {
-          // 請求已發出，但沒有收到回應 (例如網路問題)
-          this.errorMessage = '無法連接到伺服器，請檢查你的網路連線。';
-          console.error('API 無回應:', error.request);
-        } else {
-          // 設定請求時發生了其他錯誤
-          this.errorMessage = '發生未知錯誤，請稍後再試。';
-          console.error('請求設定錯誤:', error.message);
-        }
       }
     },
-    goToRegister() {
-      console.log("HI");
-      this.$router.push('/register');
-    }
   },
 };
 </script>
 
 <style scoped>
+/* 整體背景和居中 */
 .login-container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* 確保佔據整個視窗高度 */
+  background-color: #2c2c2c; /* 深灰色背景 */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* 常用字體 */
+  color: #e0e0e0; /* 淺色文字 */
+}
+
+/* 登入盒子 */
+.login-box {
+  background-color: #3a3a3a; /* 比背景稍淺的深灰色 */
+  padding: 40px 30px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  font-family: sans-serif;
-}
-
-h2 {
-  text-align: center;
-  color: #333;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  color: #555;
-}
-
-.form-group input {
-  width: calc(100% - 22px); /* 調整以適應 padding 和 border */
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-button {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); /* 輕微陰影 */
   width: 100%;
-  padding: 10px;
-  background-color: #007bff;
+  max-width: 400px; /* 最大寬度 */
+  text-align: center;
+}
+
+/* 標題 */
+.login-title {
+  color: #f0f0f0;
+  font-size: 2.2em;
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+/* 表單組 */
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+/* 輸入框 */
+.form-input {
+  width: calc(100% - 20px); /* 100% 寬度減去 padding */
+  padding: 12px 10px;
+  margin-top: 5px; /* 模擬 HackMD 的間距 */
+  border: 1px solid #555; /* 邊框 */
+  border-radius: 4px;
+  background-color: #4a4a4a; /* 輸入框背景色 */
+  color: #f0f0f0;
+  font-size: 1em;
+  outline: none; /* 移除外框 */
+  transition: border-color 0.3s ease;
+}
+
+.form-input::placeholder {
+  color: #bbb; /* 佔位符顏色 */
+}
+
+.form-input:focus {
+  border-color: #007bff; /* 聚焦時的邊框顏色，類似藍色 */
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* 輕微光暈 */
+}
+
+/* 登入按鈕 */
+.login-button {
+  width: 100%;
+  padding: 14px 20px;
+  background-color: #5f4fcc; /* 類似 HackMD 的紫色按鈕 */
   color: white;
   border: none;
   border-radius: 4px;
+  font-size: 1.1em;
   cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  font-weight: 500;
+  margin-top: 20px; /* 與輸入框的間距 */
 }
 
-button:hover {
-  background-color: #0056b3;
+.login-button:hover {
+  background-color: #7e6dd3; /* 懸停時顏色變深 */
 }
 
-button:disabled {
-  background-color: #cccccc;
+.login-button:active {
+  transform: translateY(1px); /* 點擊時輕微下壓效果 */
+}
+
+.login-button:disabled {
+  background-color: #555;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
+/* 錯誤訊息 */
 .error-message {
-  color: red;
-  margin-top: 10px;
-  text-align: center;
+  color: #ff4d4f; /* 醒目的錯誤紅色 */
+  margin-top: 20px;
+  font-size: 0.9em;
 }
 
-.success-message {
-  color: green;
-  margin-top: 10px;
-  text-align: center;
+/* 註冊連結容器和連結本身 */
+.register-link-container {
+  margin-top: 30px; /* 與按鈕的間距 */
+  padding-top: 20px;
+  border-top: 1px solid #4a4a4a; /* 分隔線 */
+}
+
+.register-link {
+  color: #278fff; /* 連結顏色 */
+  text-decoration: underline;
+  font-size: 0.95em;
+  transition: color 0.3s ease;
+}
+
+.register-link:hover,
+.register-link:focus { /* 新增 :focus 偽類 */
+  color: #7bbbff; /* 懸停時顏色變深 */
+  background-color: transparent; /* **關鍵：將背景色設定為透明** */
+  outline: none; /* 移除可能存在的聚焦外框 */
+}
+
+/* 隱藏元素以供螢幕閱讀器使用 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 </style>

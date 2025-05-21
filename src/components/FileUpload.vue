@@ -22,11 +22,8 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { requestKeys } from '@/services/kmsService';
-import { importPublicKey, generateAesKeyAndIv, encryptFile, wrapKey } from '@/utils/crypto';
 import { formatFileSize } from '@/utils/utile';
-import { UPLOAD_URL } from '../config/apiConfig';
+import { encryptFileAndUpload } from '@/services/fileUpload';
 
 export default {
   name: 'FileUpload',
@@ -37,12 +34,6 @@ export default {
       uploadProgress: 0,
       uploadError: null,
       uploadSuccess: null,
-      kmsPublicKey: null,
-      kmsKeyId: null,
-      aesKey: null,
-      iv: null,
-      encryptedFile: null,
-      wrappedKey: null,
     };
   },
   methods: {
@@ -51,15 +42,8 @@ export default {
       this.uploadError = null;
       this.uploadSuccess = null;
     },
-    async fetchKmsPublicKey() {
-      try {
-        const response = await requestKeys(localStorage.getItem('username'), 'public');
-        this.kmsKeyId = response.keyID;
-        this.kmsPublicKey = await importPublicKey(response.key); // 假設後端回傳 PEM 格式的公鑰
-      } catch (error) {
-        console.error('請求 KMS 公鑰失敗:', error);
-        this.uploadError = '請求 KMS 公鑰失敗，請稍後再試。';
-      }
+    updateUploadProgress(progress) {
+      this.uploadProgress = progress;
     },
     async uploadEncryptedFile() {
       if (!this.selectedFile) {
@@ -67,51 +51,18 @@ export default {
         return;
       }
 
-      await this.fetchKmsPublicKey();
-
       this.uploading = true;
       this.uploadProgress = 0;
       this.uploadError = null;
       this.uploadSuccess = null;
 
       try {
-        // 1. 生成 AES 金鑰和 IV
-        const { aesKey, iv } = await generateAesKeyAndIv();
-        this.aesKey = aesKey;
-        this.iv = iv;
-
-        // 2. 加密檔案
-        this.encryptedFile = await encryptFile(this.selectedFile, this.aesKey, this.iv);
-
-        // 3. 包裝金鑰
-        this.wrappedKey = await wrapKey(this.aesKey, this.kmsPublicKey);
-
-        const formData = new FormData();
-        formData.append('username', localStorage.getItem('username'));
-        formData.append('filename', this.selectedFile.name);
-        formData.append('kmsKeyID', this.kmsKeyId);
-        formData.append('iv', new Blob([this.iv]));
-        formData.append('encryptedKey', new Blob([this.wrappedKey]));
-        formData.append('encryptedFile', this.encryptedFile);
-
-        const token = localStorage.getItem('accessToken');
-
-        const response = await axios.post(UPLOAD_URL, formData, { // 替換為你的上傳加密檔案的 API 端點
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`,
-          },
-          onUploadProgress: (progressEvent) => {
-            this.uploadProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          },
-        });
+        const response = await encryptFileAndUpload(this.selectedFile, this.updateUploadProgress)
 
         this.uploading = false;
         this.uploadSuccess = '檔案加密上傳成功！';
         this.$emit('file-uploaded'); // 觸發事件，通知父 component 重新載入文件列表 (如果需要)
         this.selectedFile = null;
-        this.kmsPublicKey = null; // 上傳成功後可以清空公鑰
-        // 可在此處理後端回傳的資料
         console.log('檔案加密上傳成功:', response.data);
       } catch (error) {
         this.uploading = false;

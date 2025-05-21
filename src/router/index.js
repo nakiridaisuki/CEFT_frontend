@@ -6,21 +6,25 @@ import UserDashboard from '@/components/UserDashboard.vue';
 const routes = [
   {
     path: '/',
+    redirect: '/login',
+  },
+  {
+    path: '/login',
     name: 'Login',
     component: LoginPage,
   },
   {
     path: '/register',
     name: 'Register',
-    component: RegisterForm, // 確保你已經建立了 RegisterForm component
+    component: RegisterForm,
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: UserDashboard, // 加入 dashboard 路由
+    component: UserDashboard,
     beforeEnter: (to, from, next) => {
       if (!localStorage.getItem('accessToken')) {
-        next('/'); // 如果沒有 token，導回登入頁面
+        next('/');
       } else {
         next();
       }

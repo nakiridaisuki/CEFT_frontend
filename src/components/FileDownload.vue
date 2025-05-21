@@ -1,14 +1,12 @@
 <template>
-  <button @click="downloadAndDecryptFile" :disabled="isDownloading">
+  <button @click="downloadFile" :disabled="isDownloading">
     {{ isDownloading ? '下載解密中...' : '下載' }}
   </button>
   <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
 </template>
 
 <script>
-import { fetchFileKeyData, fetchEncryptedFile } from '@/services/fileDownload';
-import { requestKeys } from '@/services/kmsService';
-import { importPrivateKey, unwrapKey, decryptFile } from '@/utils/crypto';
+import { downloadAndDecryptFile } from '@/services/fileDownload';
 
 export default {
   name: 'EncryptedFileDownloader',
@@ -25,51 +23,16 @@ export default {
   data() {
     return {
       isDownloading: false,
-      fileKeyData: null,
-      userPrivateKey: null,
-      encryptedFileBlob: null,
       errorMessage: null,
       canDownload: false,
     };
   },
   methods: {
-    async downloadAndDecryptFile() {
+    async downloadFile() {
       this.isDownloading = true;
       this.errorMessage = null;
-
-      this.fileKeyData = await fetchFileKeyData(this.fileId);
-      const privateKeyResponse = await requestKeys(localStorage.getItem('username'), 'private');
-      this.userPrivateKey = await importPrivateKey(privateKeyResponse.key);
-
-      console.log(this.userPrivateKey)
-
       try {
-        // 1. 解包檔案金鑰
-        const unwrappedKey = await unwrapKey(
-          this.fileKeyData.encryptedKey,
-          this.userPrivateKey
-        );
-        if (!unwrappedKey) {
-          this.errorMessage = '解包檔案金鑰失敗。';
-          this.isDownloading = false;
-          return;
-        }
-
-        // 2. 請求加密檔案
-        this.encryptedFileBlob = await fetchEncryptedFile(this.fileId);
-        if (!this.encryptedFileBlob) {
-          this.errorMessage = '請求加密檔案失敗。';
-          this.isDownloading = false;
-          return;
-        }
-
-        // 3. 解密檔案
-        const iv = this.fileKeyData.iv;
-        const encryptedData = await this.encryptedFileBlob.arrayBuffer();
-        const decryptedData = await decryptFile(encryptedData, unwrappedKey, iv);
-
-        // 4. 創建 Blob 並下載
-        const decryptedBlob = new Blob([decryptedData]);
+        const decryptedBlob = await downloadAndDecryptFile(this.fileId);
         const url = window.URL.createObjectURL(decryptedBlob);
         const link = document.createElement('a');
         link.href = url;
@@ -78,11 +41,10 @@ export default {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        this.isDownloading = false;
-
       } catch (error) {
         console.error('下載和解密檔案失敗:', error);
         this.errorMessage = error.message || '下載和解密檔案失敗，請稍後再試。';
+      } finally {
         this.isDownloading = false;
       }
     },

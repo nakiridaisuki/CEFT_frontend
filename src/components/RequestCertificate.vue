@@ -10,10 +10,10 @@
     <div v-if="certificate">
       <h3>憑證已簽發</h3>
       <p><strong>私鑰 (請務必安全保存):</strong></p>
-      <textarea rows="5" cols="60" readonly>{{ privateKeyPEM }}</textarea>
+      <textarea rows="5" cols="60" readonly>{{ privateKey }}</textarea>
       <button @click="downloadPrivateKey">下載私鑰</button>
       <p><strong>數位憑證:</strong></p>
-      <textarea rows="10" cols="60" readonly>{{ certificatePEM }}</textarea>
+      <textarea rows="10" cols="60" readonly>{{ certificate }}</textarea>
       <button @click="downloadCertificate">下載憑證</button>
       <p v-if="downloadError" class="error-message">{{ downloadError }}</p>
     </div>
@@ -21,8 +21,8 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { GENERATE_CERTIFICATE_URL } from '../config/apiConfig';
+import { generateRSAPemKey } from '@/utils/crypto';
+import { requestCertificate } from '@/services/kmsService';
 
 export default {
   name: 'RequestCertificate',
@@ -30,10 +30,7 @@ export default {
     return {
       publicKey: null,
       privateKey: null,
-      publicKeyPEM: '',
-      certificate: null,
-      privateKeyPEM: '',
-      certificatePEM: '',
+      certificate: localStorage.getItem('userCertificate') || '',
       generatingOrRequesting: false,
       error: null,
       downloadError: null,
@@ -51,70 +48,34 @@ export default {
       this.error = null;
 
       try {
-        // 1. 生成金鑰對
-        const keyPair = await window.crypto.subtle.generateKey(
-          {
-            name: 'RSA-OAEP',
-            modulusLength: 2048,
-            publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 65537
-            hash: 'SHA-256',
-          },
-          true, // extractable
-          ['encrypt', 'decrypt']
-        );
+        const keyPair = await generateRSAPemKey();
+        this.publicKey = keyPair.publicKeyPEM;
+        this.privateKey = keyPair.privateKeyPEM;
 
-        this.publicKey = keyPair.publicKey;
-        this.privateKey = keyPair.privateKey;
-
-        // 匯出公鑰為 spki 格式並轉換為 PEM
-        const exportedPublicKey = await window.crypto.subtle.exportKey('spki', this.publicKey);
-        const publicKeyBuffer = new Uint8Array(exportedPublicKey);
-        const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBuffer));
-        this.publicKeyPEM = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
-        
-        // 匯出私鑰為 pkcs8 格式並轉換為 PEM
-        const exportedPrivateKey = await window.crypto.subtle.exportKey('pkcs8', this.privateKey);
-        const privateKeyBuffer = new Uint8Array(exportedPrivateKey);
-        const privateKeyBase64 = btoa(String.fromCharCode(...privateKeyBuffer));
-        this.privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${privateKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
-        
-        // 2. 請求憑證
-        const formData = new FormData();
-        formData.append('username', this.username);
-        formData.append('publicKey', this.publicKeyPEM);
-        const response = await axios.post(GENERATE_CERTIFICATE_URL, formData, {
-          headers: {
-            'Content-Type': 'application/form-data',
-          },
-        });
-
-        this.certificate = true;
-        this.certificatePEM = response.data.data.certificate;
-
-        this.generatingOrRequesting = false;
-
+        this.certificate = await requestCertificate(this.username, this.publicKey);
       } catch (error) {
         console.error('生成金鑰並請求憑證失敗:', error);
         this.error = '生成金鑰並請求憑證失敗，請稍後再試。';
         if (error.response && error.response.data && error.response.data.message) {
           this.error = error.response.data.message;
         }
+      } finally {
         this.generatingOrRequesting = false;
       }
     },
     downloadPrivateKey() {
-      if (!this.privateKeyPEM) {
+      if (!this.privateKey) {
         this.downloadError = '私鑰尚未生成。';
         return;
       }
-      this.downloadFile('private_key.pem', this.privateKeyPEM, 'text/plain');
+      this.downloadFile('private_key.pem', this.privateKey, 'text/plain');
     },
     downloadCertificate() {
-      if (!this.certificatePEM) {
+      if (!this.certificate) {
         this.downloadError = '憑證尚未簽發。';
         return;
       }
-      this.downloadFile('certificate.pem', this.certificatePEM, 'text/plain');
+      this.downloadFile('certificate.pem', this.certificate, 'text/plain');
     },
     downloadFile(filename, content, contentType) {
       const element = document.createElement('a');

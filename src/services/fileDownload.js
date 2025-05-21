@@ -2,6 +2,8 @@
 import axios from 'axios';
 import { GET_FILEKEY_URL, DOWNLOAD_URL } from '@/config/apiConfig';
 import { base64ToArrayBuffer, hexStringToUint8Array } from '@/utils/utile';
+import { unwrapKey, importPrivateKey, decryptFile } from '@/utils/crypto';
+import { requestPrivateKeys } from './kmsService';
 
 async function fetchFileKeyData(fileID) {
   const token = localStorage.getItem('accessToken');
@@ -40,4 +42,21 @@ async function fetchEncryptedFile(fileID) {
   return response.data;
 }
 
-export { fetchFileKeyData, fetchEncryptedFile };
+async function downloadAndDecryptFile(fileId) {
+  const fileKeyData = await fetchFileKeyData(fileId);
+  const privateKeyResponse = await requestPrivateKeys(localStorage.getItem('username'));
+  const privateKey = await importPrivateKey(privateKeyResponse.key);
+
+  const unwrappedKey = await unwrapKey(
+    fileKeyData.encryptedKey,
+    privateKey
+  );
+  const encryptedFileBlob = await fetchEncryptedFile(fileId);
+
+  const iv = fileKeyData.iv;
+  const encryptedData = await encryptedFileBlob.arrayBuffer();
+  const decryptedData = await decryptFile(encryptedData, unwrappedKey, iv);
+  return new Blob([decryptedData]);
+}
+
+export { downloadAndDecryptFile };

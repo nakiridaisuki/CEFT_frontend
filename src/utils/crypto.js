@@ -1,5 +1,4 @@
-// src/utils/cryptoUtils.js
-async function importPublicKey(pemKey) {
+export async function importPublicKey(pemKey) {
   // 將 PEM 格式的公鑰轉換為 ArrayBuffer
   const binaryDerString = window.atob(pemKey.replace(/(-----BEGIN PUBLIC KEY-----)|(-----END PUBLIC KEY-----)|\n/g, ''));
   const binaryDer = new Uint8Array(binaryDerString.length);
@@ -19,7 +18,7 @@ async function importPublicKey(pemKey) {
   );
 }
 
-async function importPrivateKey(pemKey) {
+export async function importPrivateKey(pemKey) {
   const binaryDerString = window.atob(pemKey.replace(/(-----BEGIN PRIVATE KEY-----)|(-----END PRIVATE KEY-----)|\n/g, ''));
   const binaryDer = new Uint8Array(binaryDerString.length);
   for (let i = 0; i < binaryDerString.length; i++) {
@@ -37,7 +36,7 @@ async function importPrivateKey(pemKey) {
   );
 }
 
-async function generateAesKeyAndIv() {
+export async function generateAesKeyAndIv() {
   const aesKey = await window.crypto.subtle.generateKey(
     {
       name: 'AES-GCM',
@@ -50,7 +49,37 @@ async function generateAesKeyAndIv() {
   return { aesKey, iv };
 }
 
-async function encryptFile(file, aesKey, iv) {
+export async function generateRSAPemKey() {
+  const keyPair = await window.crypto.subtle.generateKey(
+    {
+      name: 'RSA-OAEP',
+      modulusLength: 2048,
+      publicExponent: new Uint8Array([0x01, 0x00, 0x01]), // 65537
+      hash: 'SHA-256',
+    },
+    true, // extractable
+    ['encrypt', 'decrypt']
+  );
+
+  publicKey = keyPair.publicKey;
+  privateKey = keyPair.privateKey;
+
+  // 匯出公鑰為 spki 格式並轉換為 PEM
+  const exportedPublicKey = await window.crypto.subtle.exportKey('spki', publicKey);
+  const publicKeyBuffer = new Uint8Array(exportedPublicKey);
+  const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBuffer));
+  publicKeyPEM = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+
+  // 匯出私鑰為 pkcs8 格式並轉換為 PEM
+  const exportedPrivateKey = await window.crypto.subtle.exportKey('pkcs8', privateKey);
+  const privateKeyBuffer = new Uint8Array(exportedPrivateKey);
+  const privateKeyBase64 = btoa(String.fromCharCode(...privateKeyBuffer));
+  privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${privateKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+
+  return { privateKeyPEM, publicKeyPEM };
+}
+
+export async function encryptFile(file, aesKey, iv) {
   const fileBuffer = await file.arrayBuffer();
   const encryptedContent = await window.crypto.subtle.encrypt(
     {
@@ -63,7 +92,7 @@ async function encryptFile(file, aesKey, iv) {
 return new Blob([encryptedContent]);
 }
 
-async function decryptFile(encryptedData, aesKey, iv) {
+export async function decryptFile(encryptedData, aesKey, iv) {
   return crypto.subtle.decrypt(
     {
       name: "AES-GCM",
@@ -74,7 +103,7 @@ async function decryptFile(encryptedData, aesKey, iv) {
   );
 }
 
-async function wrapKey(aesKey, publicKey) {
+export async function wrapKey(aesKey, publicKey) {
   return await window.crypto.subtle.wrapKey(
     'raw',
     aesKey,
@@ -85,7 +114,7 @@ async function wrapKey(aesKey, publicKey) {
   );
 }
 
-async function unwrapKey(wrappedKey, privateKey) {
+export async function unwrapKey(wrappedKey, privateKey) {
   return await window.crypto.subtle.unwrapKey(
     'raw',
     new Uint8Array(wrappedKey),
@@ -101,6 +130,3 @@ async function unwrapKey(wrappedKey, privateKey) {
     ['decrypt']
   );
 }
-
-
-export { importPrivateKey, importPublicKey, generateAesKeyAndIv, encryptFile, decryptFile, wrapKey, unwrapKey };
