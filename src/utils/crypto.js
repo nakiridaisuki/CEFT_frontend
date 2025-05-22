@@ -61,20 +61,20 @@ export async function generateRSAPemKey() {
     ['encrypt', 'decrypt']
   );
 
-  publicKey = keyPair.publicKey;
-  privateKey = keyPair.privateKey;
+  const publicKey = keyPair.publicKey;
+  const privateKey = keyPair.privateKey;
 
   // 匯出公鑰為 spki 格式並轉換為 PEM
   const exportedPublicKey = await window.crypto.subtle.exportKey('spki', publicKey);
   const publicKeyBuffer = new Uint8Array(exportedPublicKey);
   const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBuffer));
-  publicKeyPEM = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+  const publicKeyPEM = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
 
   // 匯出私鑰為 pkcs8 格式並轉換為 PEM
   const exportedPrivateKey = await window.crypto.subtle.exportKey('pkcs8', privateKey);
   const privateKeyBuffer = new Uint8Array(exportedPrivateKey);
   const privateKeyBase64 = btoa(String.fromCharCode(...privateKeyBuffer));
-  privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${privateKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+  const privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${privateKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
 
   return { privateKeyPEM, publicKeyPEM };
 }

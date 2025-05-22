@@ -5,6 +5,8 @@ const KMS_API_BASE_URL = 'http://127.0.0.2:5000/';
 const SIGNIN_URL = DISK_API_BASE_URL + '/api/auth/signin';
 const SIGNUP_URL = DISK_API_BASE_URL + '/api/auth/signup';
 const TWOFA_SETUP_URL = DISK_API_BASE_URL + '/api/auth/twofa/setup';
+const TWOFA_CHECK_URL = DISK_API_BASE_URL + '/api/auth/twofa/check';
+const TWOFA_CANCEL_URL = DISK_API_BASE_URL + '/api/auth/twofa/cancel';
 const TWOFA_VERIFY_URL = DISK_API_BASE_URL + '/api/auth/twofa/verify';
 const DOWNLOAD_URL = DISK_API_BASE_URL + '/api/file/download';
 const FILE_INFO_URL = DISK_API_BASE_URL + '/api/file/fileinfo';
@@ -30,6 +32,8 @@ export {
   SIGNUP_URL,
   TWOFA_SETUP_URL,
   TWOFA_VERIFY_URL,
+  TWOFA_CHECK_URL,
+  TWOFA_CANCEL_URL,
   DOWNLOAD_URL,
   FILE_INFO_URL,
   GET_FILEKEY_URL,

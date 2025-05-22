@@ -3,7 +3,7 @@ import { UPLOAD_URL } from "@/config/apiConfig";
 import { requestPublicKeys } from "./kmsService";
 import axios from "axios";
 
-async function encryptFileAndUpload(file, onProgressCallback) {
+async function encryptFileAndUpload(file, onProgressCallback, router) {
   try{
     const { aesKey, iv } = await generateAesKeyAndIv();
     const publicKeyInfo = await requestPublicKeys(localStorage.getItem('username'));

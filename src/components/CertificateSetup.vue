@@ -1,11 +1,20 @@
 <template>
   <div class="certificate-popover" ref="popover">
+    <div v-if="certificateOwnerName" class="certOwnerName">
+      憑證擁有者：{{ certificateOwnerName }}
+    </div>
+
     <h3>上傳憑證檔案</h3>
     <p class="description">支援 .pem 格式</p>
-    <input type="file" ref="certFileInput" @change="handleFileChange" accept=".pem" />
 
-    <div v-if="uploadedCertificate" class="selected-file-info">
-      已選擇: <span>{{ uploadedCertificate.name }}</span>
+    <input type="file"
+           ref="certFileInput"
+           @change="handleFileChange"
+           accept=".pem"
+           style="display: none;" />
+    <div class="custom-file-input">
+      <span class="placeholder" :class="{ 'has-certificate': uploadedCertificate }">{{ uploadedCertificate ? uploadedCertificate.name : '未選擇檔案。' }}</span>
+      <button @click="triggerFileInput" class="browse-button">瀏覽...</button>
     </div>
 
     <div class="popover-actions">
@@ -16,107 +25,114 @@
 </template>
 
 <script>
+import { X509 } from 'jsrsasign';
+
 export default {
-  name: 'CertificateUploadPopover',
+  name: 'CertificateSetup',
   data() {
     return {
       uploadedCertificate: null,
+      certificateContent: null, // 用於儲存文件內容
       uploadMessage: '',
-      uploadedCertificate: null
+      certificateOwnerName: '',
     };
   },
   mounted() {
-    // 當組件掛載後，監聽點擊外部事件來關閉 Popover
-    document.addEventListener('click', this.handleClickOutside);
-  },
-  beforeUnmount() {
-    // 組件銷毀前移除事件監聽
-    document.removeEventListener('click', this.handleClickOutside);
+    this.getCertificateOwnerName();
   },
   methods: {
+    getCertificateOwnerName() {
+      const certificate = localStorage.getItem('userCertificate');
+      if (!certificate) {
+        console.error("Don't have certificate!");
+        return;
+      }
+
+      const x509 = new X509();
+      x509.readCertPEM(certificate);
+      const subjectDump = x509.getSubjectString();
+      const cnMatch = subjectDump.match(/CN=([^/]+)/);
+      if (cnMatch && cnMatch[1]) {
+        this.certificateOwnerName = cnMatch[1];
+      }
+      else {
+        console.error("Faild to get cn");
+      }
+    },
+    triggerFileInput() {
+      this.$refs.certFileInput.click();
+      this.handleInputFocus();
+    },
     handleFileChange(event) {
       const file = event.target.files[0];
-      if (file && file.type === 'application/x-pem-file' || file.name.endsWith('.pem')) {
+      if (file && (file.type === 'application/x-pem-file' || file.name.endsWith('.pem'))) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          this.uploadedCertificate = e.target.result;
-          this.certificateUploadMessage = '憑證已選擇，您可以儲存到本地。';
+          this.uploadedCertificate = file; // 保存 File 物件
+          this.certificateContent = e.target.result; // 保存文件內容用於 localStorage
+          this.uploadMessage = '憑證已選擇，您可以儲存到本地。';
         };
         reader.onerror = () => {
           this.uploadedCertificate = null;
-          this.certificateUploadMessage = '讀取憑證檔案失敗。';
+          this.certificateContent = null;
+          this.uploadMessage = '讀取憑證檔案失敗。';
         };
         reader.readAsText(file);
+        this.$emit('fileSelected');
       } else if (file) {
         this.uploadedCertificate = null;
-        this.certificateUploadMessage = '請上傳 .pem 格式的憑證檔案。';
+        this.certificateContent = null;
+        this.uploadMessage = '請上傳 .pem 格式的憑證檔案。';
       } else {
         this.uploadedCertificate = null;
-        this.certificateUploadMessage = '';
+        this.certificateContent = null;
+        this.uploadMessage = '';
       }
     },
     saveCertificateToLocal() {
-      if (this.uploadedCertificate) {
-        localStorage.setItem('userCertificate', this.uploadedCertificate);
-        this.certificateUploadMessage = '憑證已成功儲存到本地。';
+      if (this.certificateContent) {
+        localStorage.setItem('userCertificate', this.certificateContent);
+        this.uploadMessage = '憑證已成功儲存到本地。';
         this.uploadedCertificate = null;
+        this.certificateContent = null;
         this.$refs.certFileInput.value = '';
-
         this.$emit('certificateSaved');
-        this.closePopover(); // 上傳成功後自動關閉
       } else {
-        this.certificateUploadMessage = '請先上傳憑證檔案。';
+        this.uploadMessage = '請先上傳憑證檔案。';
       }
+      this.getCertificateOwnerName();
     },
     closePopover() {
-      // 觸發事件通知父組件關閉 Popover
       this.$emit('close');
       this.uploadedCertificate = null;
+      this.certificateContent = null;
       this.uploadMessage = '';
       this.uploadStatusClass = '';
       if (this.$refs.certFileInput) {
         this.$refs.certFileInput.value = '';
       }
     },
-    handleClickOutside(event) {
-      // 如果點擊事件的目標不是 Popover 內部，且不是觸發按鈕本身，則關閉 Popover
-      if (this.$refs.popover && !this.$refs.popover.contains(event.target)) {
-        // 這裡需要一個額外的判斷，確保點擊觸發按鈕時不會關閉
-        // 最佳做法是讓父組件來判斷是否關閉，因為它知道哪個按鈕觸發了 Popover
-        // 所以這裡只發出一個事件，讓父組件決定
-        this.$emit('clickOutside');
-      }
-    }
+    handleInputFocus() {
+      this.$emit('fileInputFocus'); // **新增事件：通知父組件 input 活躍**
+    },
   }
 };
 </script>
 
 <style scoped>
 .certificate-popover {
-  position: absolute; /* 相對於父級 (relative) 定位 */
-  bottom: calc(100% + 15px); /* 定位在按鈕上方，留出一些間距 */
-  left: 50%;
-  transform: translateX(-50%); /* 水平居中 */
-  background-color: #3c4043; /* 比側邊欄淺一些的深色 */
+  /* 保持其尺寸、背景、陰影、間距、文字顏色、過渡等樣式 */
+  background-color: #3c4043;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  padding: 20px;
-  width: 300px; /* 小區塊的寬度 */
-  z-index: 1500; /* 確保在模態框下方，但在頁面元素上方 */
+  padding: 20px; /* 這個 padding 是 Popover 內部的空間 */
+  width: 300px;
+  height: 300px;
+  z-index: 1500;
   display: flex;
   flex-direction: column;
   gap: 15px;
   color: #e8eaed;
-  opacity: 0; /* 初始隱藏，用於過渡 */
-  visibility: hidden;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-}
-
-/* 在 Dashboard.vue 中控制顯示時添加的類別 */
-.certificate-popover.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(-5px); /* 向上輕微移動效果 */
+  opacity: 0;
 }
 
 h3 {
@@ -133,28 +149,67 @@ h3 {
   margin-bottom: 5px;
 }
 
-input[type="file"] {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #4a4a4a;
-  border-radius: 5px;
-  background-color: #2f3032;
-  color: #e8eaed;
+input[type="file"]::-webkit-file-upload-button {
+  display: none; /* 隱藏 Chrome/Safari 中的原生按鈕 */
 }
 
-input[type="file"]::-webkit-file-upload-button {
-  background-color: #8ab4f8;
-  color: #202124;
+input[type="file"]::file-selector-button {
+  display: none; /* 隱藏 Firefox/Edge 中的原生按鈕 */
+}
+
+.custom-file-input {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 讓內容和按鈕分開 */
+  width: 80%;
+  padding: 8px 12px;
+  border: 1px solid #666; /* 圓角邊框，灰色 */
+  border-radius: 4px; /* 圓角 */
+  background-color: #2f3032; /* 背景色 */
+  color: #e8eaed;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.custom-file-input .placeholder {
+  flex-grow: 1; /* 佔據剩餘空間 */
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #a0a0a0; /* 預設文字顏色 */
+  text-align: center;
+}
+
+.placeholder.has-certificate {
+  color: #e8eaed; /* 預設文字顏色 */
+}
+
+/* 瀏覽按鈕的樣式 */
+.browse-button {
+  background-color: #5f4fcc; /* 藍色背景 */
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #cecece; /* 深色文字 */
   border: none;
-  padding: 6px 12px;
+  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  margin-right: 10px;
+  flex-shrink: 0; /* 防止按鈕縮小 */
 }
 
-input[type="file"]::-webkit-file-upload-button:hover {
-  background-color: #6a9ce6;
+.browse-button:hover {
+  border-color: #7e6dd3;
+  background-color: #7e6dd3;
+}
+
+.certOwnerName {
+  margin: 0;
+  font-size: 1em;
+  color: #f0f0f0;
+  text-align: center;
 }
 
 .selected-file-info {
@@ -171,7 +226,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 .popover-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 10px;
   margin-top: 10px;
 }
@@ -186,12 +241,13 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 
 .upload-button {
-  background-color: #8ab4f8;
-  color: #202124;
+  background-color: #5f4fcc;
+  color: #cecece;
 }
 
 .upload-button:hover:not(:disabled) {
-  background-color: #6a9ce6;
+  background-color: #7e6dd3;
+  transform: translateY(-2px); /* 輕微上浮效果 */
 }
 
 .upload-button:disabled {
@@ -207,6 +263,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 .cancel-button:hover:not(:disabled) {
   background-color: #5a5a5a;
+  transform: translateY(-2px); /* 輕微上浮效果 */
 }
 
 .success {
