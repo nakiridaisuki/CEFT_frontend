@@ -1,14 +1,12 @@
-export async function importPublicKey(pemKey) {
-  // 將 PEM 格式的公鑰轉換為 ArrayBuffer
-  const binaryDerString = window.atob(pemKey.replace(/(-----BEGIN PUBLIC KEY-----)|(-----END PUBLIC KEY-----)|\n/g, ''));
-  const binaryDer = new Uint8Array(binaryDerString.length);
-  for (let i = 0; i < binaryDerString.length; i++) {
-    binaryDer[i] = binaryDerString.charCodeAt(i);
-  }
+import { KEYUTIL, KJUR } from "jsrsasign";
+import { base64ToArrayBuffer } from "./utile";
 
+export async function importPublicKey(pemKey) {
+  const base64Content = pemKey.replace(/(-----BEGIN PUBLIC KEY-----)|(-----END PUBLIC KEY-----)|\n/g, '');
+  const keyBuffer = base64ToArrayBuffer(base64Content);
   return await window.crypto.subtle.importKey(
     'spki',
-    binaryDer.buffer,
+    keyBuffer,
     {
       name: 'RSA-OAEP',
       hash: 'SHA-256',
@@ -19,14 +17,11 @@ export async function importPublicKey(pemKey) {
 }
 
 export async function importPrivateKey(pemKey) {
-  const binaryDerString = window.atob(pemKey.replace(/(-----BEGIN PRIVATE KEY-----)|(-----END PRIVATE KEY-----)|\n/g, ''));
-  const binaryDer = new Uint8Array(binaryDerString.length);
-  for (let i = 0; i < binaryDerString.length; i++) {
-    binaryDer[i] = binaryDerString.charCodeAt(i);
-  }
+  const base64Content = pemKey.replace(/(-----BEGIN PRIVATE KEY-----)|(-----END PRIVATE KEY-----)|\n/g, '');
+  const keyBuffer = base64ToArrayBuffer(base64Content);
   return await window.crypto.subtle.importKey(
     'pkcs8',
-    binaryDer.buffer,
+    keyBuffer,
     {
       name: 'RSA-OAEP',
       hash: 'SHA-256',
@@ -77,6 +72,63 @@ export async function generateRSAPemKey() {
   const privateKeyPEM = `-----BEGIN PRIVATE KEY-----\n${privateKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
 
   return { privateKeyPEM, publicKeyPEM };
+}
+
+export async function extractPublicKey(privateKeyPEM) {
+  try {
+    const privateKey = await importPrivateKey(privateKeyPEM);
+    const privateKeyJwk = await window.crypto.subtle.exportKey('jwk', privateKey);
+    const { n, e, kty, alg } = privateKeyJwk;
+
+    const publicKeyJwk = {
+      kty: kty,
+      n: n,
+      e: e,
+      alg: alg, // Include algorithm if present and relevant for public key
+    };
+
+    const publicKey = await window.crypto.subtle.importKey(
+      'jwk',
+      publicKeyJwk,
+      {
+        name: 'RSA-OAEP',
+        hash: 'SHA-256',
+      },
+      true, // Public keys are generally extractable
+      ['encrypt'] // or ['verify'] depending on your public key's usage
+    );
+
+    const exportedPublicKey = await window.crypto.subtle.exportKey(
+      "spki",
+      publicKey
+    );
+    console.log("Successfully exported public key (SPKI ArrayBuffer):", exportedPublicKey);
+
+    const publicKeyBuffer = new Uint8Array(exportedPublicKey);
+    const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyBuffer));
+    const publicKeyPEM = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+    return publicKeyPEM;
+  } catch (error) {
+    console.error("提取公鑰時發生錯誤:", error);
+    throw error;
+  }
+}
+
+export function generateCSR(privateKeyPem, publicKeyPem, subjectInfo) {
+  try {
+    const prvKey = KEYUTIL.getKey(privateKeyPem);
+    const pubKey = KEYUTIL.getKey(publicKeyPem);
+    const csr = KJUR.asn1.csr.CSRUtil.newCSRPEM({
+      subject: {str: `/C=TW/CN=${subjectInfo.commonName}`},
+      sbjpubkey: pubKey,
+      sbjprvkey: prvKey,
+      sigalg: 'SHA256withRSA', // 簽名演算法
+    });
+    return csr;
+  } catch (error) {
+    console.error("生成 CSR 時發生錯誤:", error);
+    throw error;
+  }
 }
 
 export async function encryptFile(file, aesKey, iv) {

@@ -47,12 +47,14 @@ async function downloadAndDecryptFile(fileId) {
   const privateKeyResponse = await requestPrivateKeys(localStorage.getItem('username'));
   const privateKey = await importPrivateKey(privateKeyResponse.key);
 
+
   const unwrappedKey = await unwrapKey(
     fileKeyData.encryptedKey,
     privateKey
   );
   const encryptedFileBlob = await fetchEncryptedFile(fileId);
 
+  console.log("HIHIHIIH");
   const iv = fileKeyData.iv;
   const encryptedData = await encryptedFileBlob.arrayBuffer();
   const decryptedData = await decryptFile(encryptedData, unwrappedKey, iv);

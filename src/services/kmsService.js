@@ -14,6 +14,8 @@ export async function requestPublicKeys(allowedUsers) {
         'Content-Type': 'multipart/form-data', // 確保使用 FormData 時設定正確的 Content-Type
       },
     });
+
+    localStorage.setItem('userCertificate', response.data.data.certificate);
     return response.data.data; // 假設後端回傳包含 keyID 和 key 的資料
   } catch (error) {
     console.error('請求金鑰失敗:', error);
@@ -33,6 +35,8 @@ export async function requestPrivateKeys(allowedUsers) {
         'Content-Type': 'multipart/form-data', // 確保使用 FormData 時設定正確的 Content-Type
       },
     });
+
+    localStorage.setItem('userCertificate', response.data.data.certificate);
     return response.data.data; // 假設後端回傳包含 keyID 和 key 的資料
   } catch (error) {
     console.error('請求金鑰失敗:', error);
@@ -40,10 +44,10 @@ export async function requestPrivateKeys(allowedUsers) {
   }
 }
 
-export async function requestCertificate(username, publicKey) {
+export async function requestCertificate(csr) {
   const formData = new FormData();
-  formData.append('username', username);
-  formData.append('publicKey', publicKey);
+  formData.append('timeStamp', Math.round(Date.now() / 1000));
+  formData.append('userCSR', csr);
   const response = await axios.post(GENERATE_CERTIFICATE_URL, formData, {
     headers: {
       'Content-Type': 'application/form-data',

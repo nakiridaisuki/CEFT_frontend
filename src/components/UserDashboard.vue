@@ -27,16 +27,17 @@
           <a href="#"
             class="nav-item small-button"
             :class="{ 'has-certificate': hasCertificate }" >
-            <i class="fas fa-certificate"></i> 憑證狀態： {{ hasCertificate ? '已儲存' : '未儲存' }}
+            <i class="fas fa-certificate"></i> 憑證狀態： {{ hasCertificate ? '已申請' : '未申請' }}
             <i v-if="hasCertificate" class="fas fa-check certificate-check-icon"></i>
           </a>
 
-          <CertificateSetup
+          <CertificateManager
+            :username="username"
             @fileInputFocus="handleFileInputFocus"
             @fileSelected="handleFileSelectedInPopover"
             @certificateSaved="handleCertificateSaved"
+            @readingDiscription="handleReadingDiscription"
             @close="handleCertificatePopoverClose"
-            class='show'
           />
         </div>
       </div>
@@ -86,7 +87,7 @@
           @twofa-change="checkUserTwoFactorAuthStatus"
         />
 
-        <RequestCertificate
+        <CertificateManager
           v-else-if="currentSidebarView === 'requestCertificate'"
           :username="username"
           @certificateSaved="handleCertificateSaved"
@@ -99,20 +100,18 @@
 
 <script>
 import FileUpload from './FileUpload.vue';
-import RequestCertificate from './RequestCertificate.vue';
-import CertificateSetup from './CertificateSetup.vue';
 import FileListDisplay from './FileListDisplay.vue';
 import TwoFactorAuthSetup from './TwoFactorAuthSetup.vue';
 import { deleteFile, fetchFiles, twofaCheck } from '@/services/diskService';
+import CertificateManager from './CertificateManager.vue';
 
 export default {
   name: 'UserDashboard',
   components: {
-    CertificateSetup,
     FileUpload,
-    RequestCertificate,
     TwoFactorAuthSetup,
     FileListDisplay,
+    CertificateManager
   },
   data() {
     return {
@@ -124,9 +123,11 @@ export default {
       loading: false,
       showCertificatePopover: false,
       hasCertificate: false,
+
       closePopoverTimeout: null,
       isFileInputActive: false,
       hasFileSelectedInPopover: false,
+      readDiscription: false,
 
       currentSidebarView: 'myFiles',
       hasTwoFactorAuth: false,
@@ -186,7 +187,8 @@ export default {
       this.showCertificatePopover = true;
     },
     handleMouseLeavePopoverArea() {
-      if (!this.isFileInputActive && !this.hasFileSelectedInPopover) {
+      // 只有當檔案輸入框沒有活躍，且沒有選擇檔案時，才觸發計時器關閉 Popover
+      if (!this.isFileInputActive && !this.hasFileSelectedInPopover && !this.readDiscription) {
         this.closePopoverTimeout = setTimeout(() => {
           this.showCertificatePopover = false;
         }, 300);
@@ -204,6 +206,13 @@ export default {
         this.closePopoverTimeout = null;
       }
     },
+    handleReadingDiscription() {
+      this.readDiscription = true;
+      if (this.closePopoverTimeout) {
+        clearTimeout(this.closePopoverTimeout);
+        this.closePopoverTimeout = null;
+      }
+    },
     handleFileSelectedInPopover() {
       this.hasFileSelectedInPopover = true;
       if (this.closePopoverTimeout) {
@@ -215,6 +224,7 @@ export default {
       this.showCertificatePopover = false;
       this.isFileInputActive = false;
       this.hasFileSelectedInPopover = false;
+      this.readDiscription = false;
       if (this.closePopoverTimeout) {
           clearTimeout(this.closePopoverTimeout);
           this.closePopoverTimeout = null;
@@ -228,9 +238,12 @@ export default {
       if (viewName === 'twoFactorAuth') {
         this.checkUserTwoFactorAuthStatus();
       }
+      // 關閉憑證彈出視窗，當切換側邊欄選項時
+      this.showCertificatePopover = false;
+      this.isFileInputActive = false;
+      this.hasFileSelectedInPopover = false;
     },
     async checkUserTwoFactorAuthStatus() {
-      // 這是一個假想的實現，你可能需要根據你的後端 API 來調整
       try {
         const token = localStorage.getItem('accessToken');
         if (token) {
@@ -344,12 +357,13 @@ export default {
   flex-direction: column;
   align-items: center;
   position: relative;
-  transition: transform 0.5s ease-out;
-  transform: translateY(0);
+  transition: transform 0.5s ease-out, padding-bottom 0.5s ease-out; /* 新增 padding-bottom 過渡 */
+  transform: translateY(250px);
 }
 
 .sidebar-footer.shifted-up-footer {
-  transform: translateY(-250px);
+  /* 這個 translateY 應該是根據 popover 的高度來調整 */
+  transform: translateY(0px); /* 調整為 CertificateManager 的預估高度 */
 }
 
 .sidebar-footer .small-button {
@@ -480,36 +494,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: padding-bottom 0.5s ease-out;
-}
-
-.certificate-management-wrapper:hover {
-  border-color: #8ab4f8;
-}
-
-.certificate-popover {
-  position: absolute;
-  top: auto;
-  left: 50%;
-
-  transform: translateX(-50%) translateY(50px);
-
-  background-color: #2f3032;
-  border-radius: 8px;
-  padding: 20px;
-  z-index: 1500;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  color: #e8eaed;
-  opacity: 0;
-  transition: opacity 0.1s ease-out, transform 0.5s ease;
-}
-
-
-.certificate-popover.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(50px);
+  /* 移除 hover 邊框，因為 popover 本身已經有陰影和樣式 */
 }
 
 .nav-item.small-button {
@@ -525,7 +510,7 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  pointer-events: none;
+  pointer-events: auto; /* 確保按鈕本身可以點擊 */
 
   transform: translateY(0);
   z-index: 2;
@@ -543,10 +528,6 @@ export default {
 
 .nav-item.small-button.has-certificate i {
   color: #202124;
-}
-
-.nav-item.small-button.has-certificate:hover {
-  background-color: #45a049;
 }
 
 .certificate-check-icon {
