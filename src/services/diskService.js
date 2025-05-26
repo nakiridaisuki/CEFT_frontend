@@ -1,5 +1,38 @@
 import axios from "axios";
-import { FILE_INFO_URL, DELETE_FILE_URL, SIGNIN_URL, SIGNUP_URL, TWOFA_SETUP_URL, TWOFA_CHECK_URL, TWOFA_VERIFY_URL, TWOFA_CANCEL_URL } from "@/config/apiConfig";
+import { FILE_INFO_URL, DELETE_FILE_URL, SIGNIN_URL, SIGNUP_URL, TWOFA_SETUP_URL, TWOFA_CHECK_URL, TWOFA_VERIFY_URL, TWOFA_CANCEL_URL, USER_LIST_URL, UPDATE_OWNER_URL } from "@/config/apiConfig";
+
+export async function getUserList(token) {
+  try {
+    const response = await axios.get(USER_LIST_URL, {
+        headers: {
+        Authorization: `Bearer ${token}`,
+        },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('取得用戶列表失敗:', error);
+    throw new Error('取得用戶列表失敗，請稍後再試。')
+  }
+}
+
+export async function updateFileKey(token, fileId, kmsKeyId, key, allowedOwners) {
+  try {
+    const formData = new FormData();
+    formData.append('fileId', fileId);
+    formData.append('kmsKeyId', kmsKeyId);
+    formData.append('encryptedKey', new Blob([key]));
+    formData.append('allowedUsers', allowedOwners);
+    const response = await axios.post(UPDATE_OWNER_URL, formData, {
+        headers: {
+        Authorization: `Bearer ${token}`,
+        },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error('金鑰更新失敗:', error);
+    throw new Error('金鑰更新失敗，請稍後再試。')
+  }
+}
 
 export async function fetchFiles(token, router, loadingCallback) {
   loadingCallback(true);

@@ -23,8 +23,21 @@
             :file-id="file.id"
             :filename="file.name"
             @download-error="handleDownloadError"
+            />
+            <UpdateFileKey
+            :file-id="file.id"
+            :file-users="file.users"
+            :is-owner="isOwner(file)"
+            @updated="handleFileOwnerUpdate"
           />
-          <button @click="deleteFile(file.id)" class="action-button delete-button" title="刪除">刪除</button>
+          <button
+            @click="deleteFile(file.id)"
+            class="action-button delete-button"
+            title="刪除"
+            :disabled="!isOwner(file)"
+            >
+            刪除
+          </button>
         </div>
       </div>
     </div>
@@ -36,11 +49,13 @@ import { formatFileSize, formatDate } from '@/utils/utile';
 import FileDownload from './FileDownload.vue';
 import { toast } from 'vue3-toastify';
 import 'vue3-toastify/dist/index.css';
+import UpdateFileKey from './UpdateFileKey.vue';
 
 export default {
   name: 'FileListDisplay',
   components: {
     FileDownload, // 註冊 EncryptedFileDownloader 元件
+    UpdateFileKey
   },
   props: {
     files: {
@@ -52,6 +67,10 @@ export default {
       type: Boolean,
       required: true,
       default: false,
+    },
+    username: {
+      type: String,
+      required: true,
     },
     searchQuery: {
       type: String,
@@ -122,6 +141,12 @@ export default {
           "dangerouslyHTMLString": true,
         })
       }
+    },
+    isOwner(file) {
+      return file.owner === this.username;
+    },
+    handleFileOwnerUpdate() {
+      this.$emit('reflash');
     }
   },
 };
@@ -230,14 +255,19 @@ export default {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.action-button:hover {
+.action-button:hover:enabled {
   background-color: #4a4a4a;
   color: #f0f0f0;
 }
 
 /* 刪除按鈕的特殊 hover 顏色 */
-.delete-button:hover {
+.delete-button:hover:enabled {
   color: #fc657e;
+}
+
+.delete-button:disabled {
+  cursor: not-allowed;     /* 顯示禁止符號 */
+  color: #888888;          /* 文字顏色變淡 */
 }
 
 /* 響應式調整 */

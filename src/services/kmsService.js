@@ -1,15 +1,14 @@
 // src/kmsService.js
 import axios from 'axios';
-import { GET_KMS_KEY_URL, GENERATE_CERTIFICATE_URL } from '@/config/apiConfig';
+import { GENERATE_CERTIFICATE_URL, GET_KMS_PUBLIC_KEY_URL, GET_KMS_PRIVATE_KEY_URL } from '@/config/apiConfig';
 
 export async function requestPublicKeys(allowedUsers) {
   try {
     const formData = new FormData();
     formData.append('allowedUsers', allowedUsers);
     formData.append('certificate', localStorage.getItem('userCertificate'));
-    formData.append('keyType', 'public');
 
-    const response = await axios.post(GET_KMS_KEY_URL, formData, {
+    const response = await axios.post(GET_KMS_PUBLIC_KEY_URL, formData, {
       headers: {
         'Content-Type': 'multipart/form-data', // 確保使用 FormData 時設定正確的 Content-Type
       },
@@ -23,14 +22,13 @@ export async function requestPublicKeys(allowedUsers) {
   }
 }
 
-export async function requestPrivateKeys(allowedUsers) {
+export async function requestPrivateKeys(keyId) {
   try {
     const formData = new FormData();
-    formData.append('allowedUsers', allowedUsers);
+    formData.append('keyId', keyId);
     formData.append('certificate', localStorage.getItem('userCertificate'));
-    formData.append('keyType', 'private');
 
-    const response = await axios.post(GET_KMS_KEY_URL, formData, {
+    const response = await axios.post(GET_KMS_PRIVATE_KEY_URL, formData, {
       headers: {
         'Content-Type': 'multipart/form-data', // 確保使用 FormData 時設定正確的 Content-Type
       },

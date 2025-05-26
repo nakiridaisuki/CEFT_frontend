@@ -46,10 +46,6 @@
     <div class="main-content-wrapper">
       <header class="navbar">
         <div class="navbar-center">
-          <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" placeholder="搜尋您的檔案..." class="search-input" v-model="searchQuery">
-          </div>
         </div>
 
         <div class="navbar-right">
@@ -77,7 +73,9 @@
           :files="fileList"
           :loading="loading"
           :search-query="searchQuery"
+          :username="username"
           @delete-file="deleteFile"
+          @reflash="fetchFiles"
         />
 
         <TwoFactorAuthSetup
@@ -111,7 +109,7 @@ export default {
     FileUpload,
     TwoFactorAuthSetup,
     FileListDisplay,
-    CertificateManager
+    CertificateManager,
   },
   data() {
     return {

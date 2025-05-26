@@ -10,13 +10,15 @@ const TWOFA_CANCEL_URL = DISK_API_BASE_URL + '/api/auth/twofa/cancel';
 const TWOFA_VERIFY_URL = DISK_API_BASE_URL + '/api/auth/twofa/verify';
 const DOWNLOAD_URL = DISK_API_BASE_URL + '/api/file/download';
 const FILE_INFO_URL = DISK_API_BASE_URL + '/api/file/fileinfo';
+const USER_LIST_URL = DISK_API_BASE_URL + '/api/file/userlist';
 const GET_FILEKEY_URL = DISK_API_BASE_URL + '/api/file/getkeys';
-const UPDATE_KEY_URL = DISK_API_BASE_URL + '/api/file/updatekeys';
+const UPDATE_OWNER_URL = DISK_API_BASE_URL + '/api/file/update-owner';
 const UPLOAD_URL = DISK_API_BASE_URL + '/api/file/upload';
 const DELETE_FILE_URL = DISK_API_BASE_URL + '/api/file/delete'
 
 const GENERATE_CERTIFICATE_URL = KMS_API_BASE_URL + '/api/cert/gencert';
-const GET_KMS_KEY_URL = KMS_API_BASE_URL + '/api/key/distributeKey';
+const GET_KMS_PUBLIC_KEY_URL = KMS_API_BASE_URL + '/api/key/public';
+const GET_KMS_PRIVATE_KEY_URL = KMS_API_BASE_URL + '/api/key/private';
 
 const API_HEADERS = {
   'Content-Type': 'application/json',
@@ -37,11 +39,13 @@ export {
   DOWNLOAD_URL,
   FILE_INFO_URL,
   GET_FILEKEY_URL,
-  UPDATE_KEY_URL,
+  UPDATE_OWNER_URL,
   UPLOAD_URL,
   GENERATE_CERTIFICATE_URL,
-  GET_KMS_KEY_URL,
+  GET_KMS_PRIVATE_KEY_URL,
+  GET_KMS_PUBLIC_KEY_URL,
   API_HEADERS,
   FILE_UPLOAD_HEADERS,
   DELETE_FILE_URL,
+  USER_LIST_URL,
 };

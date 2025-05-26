@@ -67,6 +67,7 @@ export default {
       privateKey: null, // 用於儲存生成憑證時的私鑰 PEM 格式
       privateKeyPEM: '', // 用於儲存導入私鑰時讀取到的 PEM 格式
       error: '', // 錯誤訊息
+      username: localStorage.getItem('username'),
     };
   },
   methods: {
@@ -114,7 +115,7 @@ export default {
         this.error = '私鑰尚未生成。'; // 錯誤訊息統一用 error 變數
         return;
       }
-      this.downloadFile('private_key.pem', this.privateKey, 'text/plain');
+      this.downloadFile(`${this.username}_private_key.pem`, this.privateKey, 'text/plain');
       this.error = null; // 清除錯誤訊息
     },
 

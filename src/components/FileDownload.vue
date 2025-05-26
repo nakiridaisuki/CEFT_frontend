@@ -20,7 +20,7 @@ export default {
     filename: {
       type: String,
       required: true,
-    }
+    },
   },
   data() {
     return {
@@ -73,7 +73,6 @@ export default {
 }
 
 .download-action-button:disabled {
-  background-color: #cccccc;
   cursor: not-allowed;
   color: #888888; /* 禁用時文字顏色 */
 }

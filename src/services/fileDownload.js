@@ -44,7 +44,7 @@ async function fetchEncryptedFile(fileID) {
 
 async function downloadAndDecryptFile(fileId) {
   const fileKeyData = await fetchFileKeyData(fileId);
-  const privateKeyResponse = await requestPrivateKeys(localStorage.getItem('username'));
+  const privateKeyResponse = await requestPrivateKeys(fileKeyData.kmsKeyId);
   const privateKey = await importPrivateKey(privateKeyResponse.key);
 
 
@@ -54,11 +54,10 @@ async function downloadAndDecryptFile(fileId) {
   );
   const encryptedFileBlob = await fetchEncryptedFile(fileId);
 
-  console.log("HIHIHIIH");
   const iv = fileKeyData.iv;
   const encryptedData = await encryptedFileBlob.arrayBuffer();
   const decryptedData = await decryptFile(encryptedData, unwrappedKey, iv);
   return new Blob([decryptedData]);
 }
 
-export { downloadAndDecryptFile };
+export { downloadAndDecryptFile, fetchFileKeyData };
