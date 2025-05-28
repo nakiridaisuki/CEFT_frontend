@@ -9,17 +9,22 @@
 
     <div v-if="currentPage === 'generate'" class="generate-view">
       <h2 v-if="!generationComplete">生成憑證中...</h2>
-      <div v-else="generationComplete" class="completion-message">
-        <h3>憑證已生成完成！</h3>
-        <p>請務必妥善保存私鑰，這是還原您檔案的唯一手段!</p>
-        <p>金鑰會自動下載，如果沒有下載，請點擊下載按鈕</p>
-        <div class="generate-buttons">
-          <button @click="downloadPrivateKey" class="action-button download-button">下載金鑰</button>
-          <button @click="closePopover" class="action-button">確定</button>
+      <div v-else="generationComplete">
+        <div v-if="!error" class="completion-message">
+          <h3>憑證已生成完成！</h3>
+          <p>請務必妥善保存私鑰，這是還原您檔案的唯一手段!</p>
+          <p>金鑰會自動下載，如果沒有下載，請點擊下載按鈕</p>
+          <div class="generate-buttons">
+            <button @click="downloadPrivateKey" class="action-button download-button">下載金鑰</button>
+            <button @click="closePopover" class="action-button">確定</button>
+          </div>
         </div>
-      </div>
-      <div v-if="error" class="error-message">
-        <p>錯誤：{{ error }}</p>
+        <div v-else="error" class="error-message">
+          <p>錯誤：{{ error }}</p>
+          <div class="error-botton">
+            <button @click="closePopover" class="action-button">確定</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -33,14 +38,22 @@
           <button @click="triggerFileInput" class="browse-button">瀏覽...</button>
         </div>
 
-        <button class="action-button upload-button" @click="generateCertFromPrivate" :disabled="!privateKeyPEM">導入私鑰</button>
+        <div class="import-buttons">
+          <button class="action-button upload-button" @click="generateCertFromPrivate" :disabled="!privateKeyPEM">導入私鑰</button>
+          <button @click="closePopover" class="action-button">取消</button>
+        </div>
       </div>
-      <div v-else="importComplete" class="completion-message">
-        <p>私鑰導入成功<br>已完成憑證請求！</p>
-        <button @click="closePopover" class="action-button">確定</button>
-      </div>
-        <div v-if="error" class="error-message">
-        <p>錯誤：{{ error }}</p>
+      <div v-else="importComplete">
+        <div v-if="!error" class="completion-message">
+          <p>私鑰導入成功<br>已完成憑證請求！</p>
+          <button @click="closePopover" class="action-button">確定</button>
+        </div>
+        <div v-else="error" class="error-message">
+          <p>錯誤：{{ error }}</p>
+          <div class="error-botton">
+            <button @click="closePopover" class="action-button">確定</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -195,6 +208,8 @@ export default {
         if (error.response && error.response.data && error.response.data.message) {
           this.error = error.response.data.message;
         }
+      } finally {
+        this.importComplete = true;
       }
     },
 
@@ -273,7 +288,6 @@ export default {
 }
 
 .upload-button {
-  margin-top: 10px;
   background-color: #5f4fcc;
   color: #f0f0f0;
 }
@@ -301,6 +315,20 @@ export default {
 .generate-buttons {
   display: flex;
   gap: 10px;
+  justify-content: center;
+}
+
+.import-buttons {
+  display: flex;
+  padding: 8px;
+  gap: 10px;
+  justify-content: center;
+}
+
+.error-botton {
+  display: flex;
+  padding: 8px;
+  margin-top: 5px;
   justify-content: center;
 }
 

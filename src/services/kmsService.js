@@ -46,6 +46,10 @@ export async function requestCertificate(csr) {
   const formData = new FormData();
   formData.append('timeStamp', Math.round(Date.now() / 1000));
   formData.append('userCSR', csr);
+
+  const certificate = localStorage.getItem('userCertificate');
+  if(certificate)
+    formData.append('certificate', certificate);
   const response = await axios.post(GENERATE_CERTIFICATE_URL, formData, {
     headers: {
       'Content-Type': 'application/form-data',

@@ -14,9 +14,6 @@
         <a href="#" class="nav-item" :class="{ 'active': currentSidebarView === 'twoFactorAuth' }" @click.prevent="selectSidebarView('twoFactorAuth')">
           <i class="fas fa-shield-alt"></i> 兩階段驗證
         </a>
-        <a href="#" class="nav-item" :class="{ 'active': currentSidebarView === 'requestCertificate' }" @click.prevent="selectSidebarView('requestCertificate')">
-          <i class="fas fa-shield-alt"></i> 申請憑證
-        </a>
       </nav>
 
       <div class="sidebar-footer" :class="{ 'shifted-up-footer': showCertificatePopover }">
@@ -65,7 +62,6 @@
         <div class="file-list-header">
           <h1 v-if="currentSidebarView === 'myFiles'" class="navbar-title">{{ '我的檔案' }}</h1>
           <h1 v-else-if="currentSidebarView === 'twoFactorAuth'" class="navbar-title">{{ '兩階段驗證' }}</h1>
-          <h1 v-else-if="currentSidebarView === 'requestCertificate'" class="navbar-title">{{ '申請憑證' }}</h1>
         </div>
 
         <FileListDisplay
@@ -84,13 +80,6 @@
           :hasExisting2FA="hasTwoFactorAuth"
           @twofa-change="checkUserTwoFactorAuthStatus"
         />
-
-        <CertificateManager
-          v-else-if="currentSidebarView === 'requestCertificate'"
-          :username="username"
-          @certificateSaved="handleCertificateSaved"
-        />
-
         </main>
     </div>
   </div>

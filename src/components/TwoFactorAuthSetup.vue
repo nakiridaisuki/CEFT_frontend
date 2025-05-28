@@ -20,7 +20,7 @@
             {{ isLoading ? '重設中...' : '重設兩階段驗證' }}
           </button>
           <button @click="cancelSetup" :disabled="isLoading" class="action-button back-button">
-            取消
+            取消設定
           </button>
         </template>
       </div>
